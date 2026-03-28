@@ -1,9 +1,6 @@
 ro.postinstall.fstab.prefix=/system
 ro.sys.usb.storage.type=mtp	
 sys.usb.controller=11201000.usb0
-
-# Keymaster
-keymaster_ver=4.1
 	
 ro.crypto.volume.filenames_mode=aes-256-cts
 ro.crypto.metadata.enabled=true
