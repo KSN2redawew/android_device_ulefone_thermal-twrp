@@ -1,0 +1,87 @@
+on init
+    export LD_LIBRARY_PATH /system/lib64:/vendor/lib64:/system/lib64/hw
+    setprop crypto.ready 1
+    mkdir /mnt/vendor/persist 0771 system system
+
+on fs
+    install_keyring
+
+on early-fs
+    start vold
+    
+    service mtk.plpath.utils.link /vendor/bin/mtk_plpath_utils_ota
+    class main
+    user root
+    group root system
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0
+
+service vendor.gatekeeper-1-0 /vendor/bin/hw/android.hardware.gatekeeper-service.trustkernel
+    interface android.hardware.gatekeeper@1.0::IGatekeeper default
+    class hal
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0
+
+service vendor.keymint-3-0-trustkernel /vendor/bin/hw/android.hardware.security.keymint@3.0-service.trustkernel
+    class early_hal
+    user root
+    group root drmrpc
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0
+
+service teed /vendor/bin/teed
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0
+
+on property:crypto.ready=1
+    start teed
+    start vendor.gatekeeper-1-0
+    start vendor.keymint-3-0-trustkernel
+
+on property:hwservicemanager.ready=true
+    start teed
+    start vendor.gatekeeper-1-0
+    start vendor.keymint-3-0-trustkernel
+
+on property:ro.crypto.state=unsupported
+    stop teed
+    stop vendor.gatekeeper-1-0
+    stop vendor.keymint-3-0-trustkernel
+
+on property:ro.crypto.state=unencrypted
+    stop teed
+    stop vendor.gatekeeper-1-0
+    stop vendor.keymint-3-0-trustkernel
+
+on property:twrp.decrypt.done=true
+    stop teed
+    stop vendor.gatekeeper-1-0
+    stop vendor.keymint-3-0-trustkernel
+
+on property:crypto.ready=0
+    stop teed
+    stop vendor.gatekeeper-1-0
+    stop vendor.keymint-3-0-trustkernel
+
+on boot
+    start health-default
+    setprop sys.usb.config mtp,adb
+    setprop sys.usb.state mtp,adb
+    setprop persist.sys.usb.config mtp,adb 
+
+    mount ext4 /dev/block/by-name/persist /mnt/vendor/persist rw
+
+on post-fs
+    chown system system /mnt/vendor/persist
+    chmod 0771 /mnt/vendor/persist
+    restorecon /mnt/vendor/persist
+
+on post-fs-data
+    mkdir /data/vendor/key_provisioning 0771 system system
+    mkdir /data/vendor/t6 0775 system system
